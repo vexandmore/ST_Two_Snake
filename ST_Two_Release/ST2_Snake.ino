@@ -1,40 +1,110 @@
 //*******************************************************************************************************************
 // 								                           Snake Game
 //*******************************************************************************************************************
-int8_t direction = 1; // 0, 1, 2, 3 mean North, East, South, West
 
-// This will hold the coordinates of each snake segment in order
-uint8_t snakeCoords[140][2] = {0};
-// Where in the array the head and tail are
-uint8_t head = 0, tail = 0;
-// Where the pellet is
-uint8_t pelletRow, pelletColumn;
+// Point has signed integers to make mod arithmetic easier
+class Point {
+public:
+  int8_t row, col;
 
-bool snakeDead(uint8_t nextHeadRow, uint8_t nextHeadCol) {
-  for (int i = tail; i != ((head + 1) % 140); i = (i + 1) % 140) {
-    if (snakeCoords[i][0] == nextHeadRow &&
-        snakeCoords[i][1] == nextHeadCol) {
-      return true;
-    }
+  Point(uint8_t row, uint8_t col): row(row), col(col) {
   }
-  return false;
+
+  Point(): row(0), col(0) {
+  }
+};
+
+bool operator==(const Point& lhs, const Point& rhs)
+{
+    return lhs.row == rhs.row && lhs.col == rhs.col;
 }
 
-bool atPellet(uint8_t nextHeadRow, uint8_t nextHeadCol) {
-  return nextHeadRow == pelletRow && nextHeadCol == pelletColumn;
-}
+
+// Store snake coordinates, bit-packed (so
+// the lower 3 bits is row, higher 5 bits
+// are column).
+class CircularSnakeBuffer {
+private:
+  uint8_t head = 0, tail = 0;
+  uint8_t snakeCoords[140] = {0};
+public:
+  CircularSnakeBuffer() {
+  }
+
+  void reset() {
+    head = 0;
+    tail = 0;
+    // Reset array to all 0
+    for (int i = 0; i < 140; i++) {
+      snakeCoords[i] = 0;
+      snakeCoords[i] = 0;
+    }
+    snakeCoords[0] = 3; // Make start in the middle row
+  }
+
+  Point getHead() {
+    return get(head);
+  }
+
+  uint8_t begin() {
+    return tail;
+  }
+
+  uint8_t end() {
+    return (head + 1) % 140;
+  }
+
+  Point get(uint8_t index) {
+    uint8_t point = snakeCoords[index];
+    return Point(point & 0b00000111, (point & 0b11111000) >> 3);
+  }
+
+  void addHead(Point p) {
+    head++;
+    head %= 140;
+    snakeCoords[head] = p.row;
+    snakeCoords[head] |= p.col << 3;
+  }
+
+  void removeTail() {
+    tail++;
+    tail %= 140;
+  }
+
+  bool snakeDead(Point h) {
+    for (int i = begin(); i != end(); i = (i + 1) % 140) {
+      if (get(i) == h) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool atPellet(Point pellet) {
+    return getHead() == pellet;
+  }
+  
+};
+
+// Store the whole snake
+CircularSnakeBuffer snake;
+// Where the pellet is
+Point pellet;
+// 0, 1, 2, 3 mean North, East, South, West
+int8_t direction = 1;
+
 
 // Place pellet somewhere the snake isn't
 void placePellet() {
   while (true) {
-    pelletRow = random(7);
-    pelletColumn = random(19);
+    uint8_t pelletRow = random(7);
+    uint8_t pelletColumn = random(19);
 
     bool pelletIsOnSnake = false;
     
-    for (int i = tail; i != ((head + 1) % 140); i = (i + 1) % 140) {
-      if (snakeCoords[i][0] == pelletRow &&
-          snakeCoords[i][1] == pelletColumn) {
+    for (int i = snake.begin(); i != snake.end(); i = (i + 1) % 140) {
+      if (snake.get(i).row == pelletRow &&
+          snake.get(i).col == pelletColumn) {
         pelletIsOnSnake = true;
         break; // need to redraw; just exit loop
       }
@@ -42,44 +112,40 @@ void placePellet() {
 
     if (!pelletIsOnSnake) {
       // exit if we've picked a valid location
+      pellet = Point(pelletRow, pelletColumn);
       break;
     }
   }
 }
 
 void clearGame() {
-  head = 0;
-  tail = 0;
-  // Reset array to all 0
-  for (int i = 0; i < 140; i++) {
-    snakeCoords[i][0] = 0;
-    snakeCoords[i][1] = 0;
-  }
-  snakeCoords[0][0] = 3; // Make start in the middle row
   direction = 1;
 
-  pelletRow = random(7);
-  pelletColumn = random(4, 19);
+  snake.reset();
+
+  pellet.row = random(7);
+  pellet.col = random(4, 19);
   
   clearmatrix();
 }
 
 void drawSnake() {
   clearmatrix();
-  
-  for (int i = tail; i != ((head + 1) % 140); i = (i + 1) % 140) {
-    int row = snakeCoords[i][0];
-    int col = snakeCoords[i][1];
-    LEDMAT[col] |= 1 << row;
+
+  // Loop over all snake segments
+  for (int i = snake.begin(); i != snake.end(); i = (i + 1) % 140) {
+    Point point = snake.get(i);
+    LEDMAT[point.col] |= 1 << point.row;
   }
 
   // Draw pellet
-  LEDMAT[pelletColumn] |= 1 << pelletRow;
+  LEDMAT[pellet.col] |= 1 << pellet.row;
 }
 
 
-void snake()
+void doSnake()
 {
+  Point head; // initialize here to make compiler happy
   switch (SUBSTATE) 
   {  
     case 0:
@@ -107,44 +173,39 @@ void snake()
         NextStateRequest = false;
       }
 
-      delay(75); // prevent from moving too fast
-      int nextHeadRow = snakeCoords[head][0];
-      int nextHeadCol = snakeCoords[head][1];
+      delay(85); // prevent from moving too fast
+      head = snake.getHead();
       
       if (direction == 0) {
-        nextHeadRow--;
-        nextHeadRow = nextHeadRow < 0 ? 6 : nextHeadRow;
+        head.row--;
+        head.row = head.row < 0 ? 6 : head.row;
       } else if (direction == 1) {
-        nextHeadCol++;
-        nextHeadCol %= 20;
+        head.col++;
+        head.col %= 20;
       } else if (direction == 2) {
-        nextHeadRow++;
-        nextHeadRow %= 7;
+        head.row++;
+        head.row %= 7;
       } else if (direction == 3) {
-        nextHeadCol--;
-        nextHeadCol = nextHeadCol < 0 ? 19 : nextHeadCol;
+        head.col--;
+        head.col = head.col < 0 ? 19 : head.col;
       }
 
       // Now that we have the coords of the next position, check if 
       // the snake has run into itself
-      if (snakeDead(nextHeadRow, nextHeadCol)) {
+      if (snake.snakeDead(head)) {
         clearGame();
         break;
       } else {
-        head++;
-        head %= 140;
-        snakeCoords[head][0] = nextHeadRow;
-        snakeCoords[head][1] = nextHeadCol;
+        snake.addHead(head);
       }
 
       // Check if that puts the snake head on the pellet
-      if (atPellet(nextHeadRow, nextHeadCol)) {
+      if (snake.atPellet(pellet)) {
         // If so, snake grows and re-put pellet
         placePellet();
       } else {
         // If not, snake doesn't grow
-        tail++;
-        tail %= 140;
+        snake.removeTail();
       }
 
       drawSnake();
