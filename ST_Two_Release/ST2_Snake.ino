@@ -175,7 +175,7 @@ void doSnake()
         NextStateRequest = false;
       }
 
-      delay(85); // prevent from moving too fast
+      delay(80); // prevent from moving too fast
       head = snake.getHead();
       
       if (direction == 0) {
@@ -195,6 +195,9 @@ void doSnake()
       // Now that we have the coords of the next position, check if 
       // the snake has run into itself
       if (snake.snakeDead(head)) {
+        beepsound(600, 300);
+        beepsound(400, 300);
+        beepsound(350, 300);
         clearGame();
         break;
       } else {
@@ -203,6 +206,7 @@ void doSnake()
 
       // Check if that puts the snake head on the pellet
       if (snake.atPellet(pellet)) {
+        beepsound(500, 100);
         // If so, snake grows and re-put pellet
         placePellet();
       } else {
