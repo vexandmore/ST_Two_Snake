@@ -155,6 +155,8 @@ void doSnake()
       clearGame();
       break;
     case 1:
+      // When press both, quit. This necessitated
+      // a modification to ST2_Main
       if(NextStateRequest && NextSUBStateRequest) {
         SUBSTATE = 99;
         NextStateRequest = false;

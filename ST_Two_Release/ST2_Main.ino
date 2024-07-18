@@ -44,7 +44,7 @@ void loop()
       }
    //   SUBSTATE = 99;
 
-      while(bval)
+      while(bval && STATE != 7)
       {
           bval = !digitalRead(SETBUTTON);
           if(bval)
@@ -70,7 +70,7 @@ void loop()
   {
     NextSUBStateRequest = true;
 
-    while(bval)
+    while(bval && STATE != 7)
     {
       
           bval = !digitalRead(MODEBUTTON);
