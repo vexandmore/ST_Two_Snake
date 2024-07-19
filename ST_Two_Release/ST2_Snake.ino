@@ -126,6 +126,48 @@ void placePellet() {
   }
 }
 
+void moveSnake() {
+  Point head = snake.getHead();
+  
+  if (direction == 0) {
+    head.row--;
+    head.row = head.row < 0 ? 6 : head.row;
+  } else if (direction == 1) {
+    head.col++;
+    head.col %= 20;
+  } else if (direction == 2) {
+    head.row++;
+    head.row %= 7;
+  } else if (direction == 3) {
+    head.col--;
+    head.col = head.col < 0 ? 19 : head.col;
+  }
+
+  // Now that we have the coords of the next position, check if 
+  // the snake has run into itself
+  if (snake.snakeDead(head)) {
+    beepsound(600, 300);
+    beepsound(400, 300);
+    beepsound(350, 300);
+    clearGame();
+    return;
+  } else {
+    snake.addHead(head);
+  }
+
+  // Check if that puts the snake head on the pellet
+  if (snake.atPellet(pellet)) {
+    beepsound(500, 60);
+    // If so, snake grows and re-put pellet
+    placePellet();
+  } else {
+    // If not, snake doesn't grow
+    snake.removeTail();
+  }
+
+  drawSnake();
+}
+
 void clearGame() {
   direction = 1;
 
@@ -141,6 +183,8 @@ void clearGame() {
 }
 
 void drawSnake() {
+  noInterrupts();
+  
   clearmatrix();
 
   // Loop over all snake segments
@@ -151,28 +195,50 @@ void drawSnake() {
 
   // Draw pellet
   LEDMAT[pellet.col] |= 1 << pellet.row;
+
+  interrupts();
+}
+
+bool timeCheck() {
+  if (millis() - timeLastUpdate < UPDATE_RATE) {
+    // If not time to update the game yet,
+    // and break
+    return true;
+  } else {
+    // If time to update, update the time
+    // (it adds UPDATE_RATE to prevent long term drift),
+    // and continue.
+    timeLastUpdate = timeLastUpdate + UPDATE_RATE;
+    return false;
+  }
+}
+
+bool shouldQuit() {
+  if(NextStateRequest && NextSUBStateRequest) {
+    SUBSTATE = 99;
+    NextStateRequest = false;
+    NextSUBStateRequest = false;
+    return true;
+  }
+  return false;
 }
 
 
 void doSnake()
 {
-  Point head; // initialize here to make compiler happy
   switch (SUBSTATE) 
   {  
     case 0:
       SUBSTATE = 1;
       displayString("Snake");
-      delay(250);
+      delay(300);
       clearGame();
       break;
 
     case 1:
       // When press both, quit. This necessitated
       // a modification to ST2_Main
-      if(NextStateRequest && NextSUBStateRequest) {
-        SUBSTATE = 99;
-        NextStateRequest = false;
-        NextSUBStateRequest = false;
+      if (shouldQuit()) {
         break;
       }
 
@@ -184,17 +250,11 @@ void doSnake()
       NextStateRequest = false;
       NextSUBStateRequest = false;
 
-      if (millis() - timeLastUpdate < UPDATE_RATE) {
-        // If not time to update the game yet,
-        // and break
+      // Only update snake if it's time
+      if(timeCheck()) {
         break;
-      } else {
-        // If time to update, update the time
-        // (it adds UPDATE_RATE to prevent long term drift),
-        // and continue.
-        timeLastUpdate = timeLastUpdate + UPDATE_RATE;
       }
-
+      
       if (bufferedNextSubstate) {
         direction--;
         direction = direction < 0 ? 3 : direction;
@@ -204,52 +264,61 @@ void doSnake()
         direction %= 4;
       }
 
-      head = snake.getHead();
-      
-      if (direction == 0) {
-        head.row--;
-        head.row = head.row < 0 ? 6 : head.row;
-      } else if (direction == 1) {
-        head.col++;
-        head.col %= 20;
-      } else if (direction == 2) {
-        head.row++;
-        head.row %= 7;
-      } else if (direction == 3) {
-        head.col--;
-        head.col = head.col < 0 ? 19 : head.col;
-      }
+      moveSnake();
 
-      // Now that we have the coords of the next position, check if 
-      // the snake has run into itself
-      if (snake.snakeDead(head)) {
-        beepsound(600, 300);
-        beepsound(400, 300);
-        beepsound(350, 300);
-        clearGame();
-        break;
-      } else {
-        snake.addHead(head);
+      // If a button is still pressed, go to state to wait for it to be unpressed
+      if (!digitalRead(SETBUTTON) && bufferedNextSubstate) {
+        SUBSTATE = 2;
       }
-
-      // Check if that puts the snake head on the pellet
-      if (snake.atPellet(pellet)) {
-        beepsound(500, 60);
-        // If so, snake grows and re-put pellet
-        placePellet();
-      } else {
-        // If not, snake doesn't grow
-        snake.removeTail();
+      if (!digitalRead(MODEBUTTON) && bufferedNextState) {
+        SUBSTATE = 3;
       }
-
-      drawSnake();
       
       // Reset buffered inputs
       bufferedNextState = 0;
       bufferedNextSubstate = 0;
       
       break;
-    
+
+    case 2:
+      if (shouldQuit()) {
+        break;
+      }
+      // Wait for next substate to be unpressed
+      if (!digitalRead(SETBUTTON) == false) {
+        SUBSTATE = 1;
+        NextStateRequest = false;
+        NextSUBStateRequest = false;
+
+        break;
+      }
+      
+      // Only update snake if it's time
+      if(timeCheck()) {
+        break;
+      }
+      moveSnake();
+      break;
+
+    case 3:
+      if (shouldQuit()) {
+        break;
+      }
+      // Wait for next state to be unpressed
+      if (!digitalRead(MODEBUTTON) == false) {
+        SUBSTATE = 1;
+        NextStateRequest = false;
+        NextSUBStateRequest = false;
+        break;
+      }
+      
+      // Only update snake if it's time
+      if(timeCheck()) {
+        break;
+      }
+      moveSnake();
+      break;
+
     case 99: // Exit Snake
       clearGame();
       NextState();
