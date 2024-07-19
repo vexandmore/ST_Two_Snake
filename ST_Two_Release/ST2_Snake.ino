@@ -8,7 +8,7 @@ CircularSnakeBuffer snake;
 // Where the pellet is
 Point pellet;
 // 0, 1, 2, 3 mean North, East, South, West
-int8_t direction = 1;
+int8_t direction;
 // Used to keep track of how long it's been
 // since the last frame (to keep consistent 
 // framerate).
@@ -18,6 +18,9 @@ int8_t direction = 1;
 uint8_t bufferedNextState, bufferedNextSubstate;
 // Keep track of last update to keep consistent rate of snake updates
 unsigned long timeLastUpdate;
+// Only quit if hold both buttons for long enough
+int8_t heldBothButtonsBefore;
+#define NUMBER_OF_TIMES_HOLD_BOTH 3
 
 
 
@@ -89,6 +92,7 @@ void moveSnake() {
 
 void clearGame() {
   direction = 1;
+  heldBothButtonsBefore = 0;
 
   snake.reset();
   timeLastUpdate = millis();
@@ -134,10 +138,18 @@ bool timeCheck() {
 
 bool shouldQuit() {
   if(NextStateRequest && NextSUBStateRequest) {
-    SUBSTATE = 99;
-    NextStateRequest = false;
-    NextSUBStateRequest = false;
-    return true;
+    if (heldBothButtonsBefore < NUMBER_OF_TIMES_HOLD_BOTH) {
+      // If only just pressed both, wait until next time to see if still
+      // holding. The snake won't move since it will move both left and right.
+      heldBothButtonsBefore++;
+      return false; 
+    } else {
+      heldBothButtonsBefore = 0;
+      SUBSTATE = 99;
+      NextStateRequest = false;
+      NextSUBStateRequest = false;
+      return true; 
+    }
   }
   return false;
 }
