@@ -31,6 +31,8 @@ public:
 
   uint8_t end();
 
+  uint8_t length();
+
   Point get(uint8_t index);
 
   void addHead(Point p);

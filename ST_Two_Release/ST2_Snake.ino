@@ -2,6 +2,7 @@
 // 								                           Snake Game
 //*******************************************************************************************************************
 #include "SnakeBuffer.h"
+#include <EEPROM.h>
 
 // Store the whole snake
 CircularSnakeBuffer snake;
@@ -21,7 +22,6 @@ unsigned long timeLastUpdate;
 // Only quit if hold both buttons for long enough
 int8_t heldBothButtonsBefore;
 #define NUMBER_OF_TIMES_HOLD_BOTH 3
-
 
 
 // Place pellet somewhere the snake isn't
@@ -71,6 +71,28 @@ void moveSnake() {
     beepsound(600, 300);
     beepsound(400, 300);
     beepsound(350, 300);
+
+    char scoreBuf[5] = {0, 0, 0, 0, 0};
+    uint8_t score = snake.length();
+    snprintf(scoreBuf, sizeof(scoreBuf), "%d   ", score);
+    uint8_t old_score;
+    EEPROM.get(2, old_score);
+    
+    displayString("Scor");
+    delay(600);
+    displayString(scoreBuf);
+    delay(600);
+
+    if (score > old_score) {
+      displayString("New ");
+      delay(600);
+      displayString("hi  ");
+      delay(600);
+      displayString("scor");
+      delay(600);
+      EEPROM.put(2, score);
+    }
+
     clearGame();
     return;
   } else {
@@ -101,6 +123,14 @@ void clearGame() {
 
   bufferedNextState = 0;
   bufferedNextSubstate = 0;
+
+  uint8_t val;
+  if (EEPROM.get(0, val) != 'H' || EEPROM.get(1, val) != 'i'){
+    // Initialize hi score if not already.
+    EEPROM.write(0, 'H');
+    EEPROM.write(1, 'i');
+    EEPROM.write(2, 0);
+  }
   
   clearmatrix();
 }
@@ -157,13 +187,24 @@ bool shouldQuit() {
 
 void doSnake()
 {
-  switch (SUBSTATE) 
+  char scoreBuf[5] = {0, 0, 0, 0, 0};
+  switch (SUBSTATE)
   {  
     case 0:
       SUBSTATE = 1;
-      displayString("Snake");
-      delay(300);
+      uint8_t score;
+      EEPROM.get(2, score);
+      snprintf(scoreBuf, sizeof(scoreBuf), "%d   ", score);
+
+      displayString("Snke");
+      delay(600);
       clearGame();
+      displayString("To  ");
+      delay(600);
+      displayString("beat");
+      delay(600);
+      displayString(scoreBuf);
+      delay(600);
       break;
 
     case 1:

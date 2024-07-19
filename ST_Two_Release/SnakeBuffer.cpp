@@ -45,6 +45,14 @@ uint8_t CircularSnakeBuffer::end() {
   return (head + 1) % 140;
 }
 
+uint8_t CircularSnakeBuffer::length() {
+  if (head > tail) {
+    return head - tail + 1;
+  } else {
+    return 139 - tail + 1 + head + 1;
+  }
+}
+
 Point CircularSnakeBuffer::get(uint8_t index) {
   uint8_t point = snakeCoords[index];
   return Point(point & 0b00000111, (point & 0b11111000) >> 3);

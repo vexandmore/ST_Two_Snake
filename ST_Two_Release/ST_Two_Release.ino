@@ -87,6 +87,7 @@ boolean displayFLAG = true;
 unsigned long SleepTimer;
 unsigned long currentMillis;
 unsigned long SleepLimit = 6000;
+unsigned long SleepLimitSnake = 15000;
 boolean SleepEnable = true;
 int UpdateTime = 0;
 
@@ -338,28 +339,3 @@ const byte GRAPHIC[5][5] = {
   16,32,16,8,4,            // Check mark
   34,20,8,20,34,           // "X"
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

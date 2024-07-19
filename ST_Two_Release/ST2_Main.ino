@@ -8,7 +8,13 @@ void loop()
   currentMillis = millis();
   OptionModeFlag = false;
 
-  if(((currentMillis - SleepTimer) > SleepLimit) && SleepEnable)
+  // Wait longer before sleeping for snake
+  if (STATE == 7) {
+    if (((currentMillis - SleepTimer) > SleepLimitSnake) && SleepEnable) {
+      STATE = 99;
+    }
+  }
+  else if(((currentMillis - SleepTimer) > SleepLimit) && SleepEnable)
   {
     STATE= 99; 
   }
