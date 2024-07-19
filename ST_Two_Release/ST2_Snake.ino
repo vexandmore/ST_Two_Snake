@@ -77,11 +77,7 @@ void moveSnake() {
     snprintf(scoreBuf, sizeof(scoreBuf), "%d   ", score);
     uint8_t old_score;
     EEPROM.get(2, old_score);
-    
-    displayString("Scor");
-    delay(600);
-    displayString(scoreBuf);
-    delay(600);
+    clearGame();
 
     if (score > old_score) {
       displayString("New ");
@@ -92,8 +88,14 @@ void moveSnake() {
       delay(600);
       EEPROM.put(2, score);
     }
+    
+    displayString("Scor");
+    delay(600);
+    displayString(scoreBuf);
+    delay(600);
+    // Wait to press a button before continuing
+    SUBSTATE = 4;
 
-    clearGame();
     return;
   } else {
     snake.addHead(head);
@@ -289,6 +291,14 @@ void doSnake()
         break;
       }
       moveSnake();
+      break;
+
+    case 4:
+      if (NextStateRequest || NextSUBStateRequest) {
+        SUBSTATE = 0;
+        NextStateRequest = false;
+        NextSUBStateRequest = false;
+      }
       break;
 
     case 99: // Exit Snake
