@@ -1,90 +1,7 @@
 //*******************************************************************************************************************
 // 								                           Snake Game
 //*******************************************************************************************************************
-
-// Point has signed integers to make mod arithmetic easier
-class Point {
-public:
-  int8_t row, col;
-
-  Point(uint8_t row, uint8_t col): row(row), col(col) {
-  }
-
-  Point(): row(0), col(0) {
-  }
-};
-
-bool operator==(const Point& lhs, const Point& rhs)
-{
-    return lhs.row == rhs.row && lhs.col == rhs.col;
-}
-
-
-// Store snake coordinates, bit-packed (so
-// the lower 3 bits is row, higher 5 bits
-// are column).
-class CircularSnakeBuffer {
-private:
-  uint8_t head = 0, tail = 0;
-  uint8_t snakeCoords[140] = {0};
-public:
-  CircularSnakeBuffer() {
-  }
-
-  void reset() {
-    head = 0;
-    tail = 0;
-    // Reset array to all 0
-    for (int i = 0; i < 140; i++) {
-      snakeCoords[i] = 0;
-      snakeCoords[i] = 0;
-    }
-    snakeCoords[0] = 3; // Make start in the middle row
-  }
-
-  Point getHead() {
-    return get(head);
-  }
-
-  uint8_t begin() {
-    return tail;
-  }
-
-  uint8_t end() {
-    return (head + 1) % 140;
-  }
-
-  Point get(uint8_t index) {
-    uint8_t point = snakeCoords[index];
-    return Point(point & 0b00000111, (point & 0b11111000) >> 3);
-  }
-
-  void addHead(Point p) {
-    head++;
-    head %= 140;
-    snakeCoords[head] = p.row;
-    snakeCoords[head] |= p.col << 3;
-  }
-
-  void removeTail() {
-    tail++;
-    tail %= 140;
-  }
-
-  bool snakeDead(Point h) {
-    for (int i = begin(); i != end(); i = (i + 1) % 140) {
-      if (get(i) == h) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool atPellet(Point pellet) {
-    return getHead() == pellet;
-  }
-  
-};
+#include "SnakeBuffer.h"
 
 // Store the whole snake
 CircularSnakeBuffer snake;
@@ -101,6 +18,8 @@ int8_t direction = 1;
 uint8_t bufferedNextState, bufferedNextSubstate;
 // Keep track of last update to keep consistent rate of snake updates
 unsigned long timeLastUpdate;
+
+
 
 // Place pellet somewhere the snake isn't
 void placePellet() {
