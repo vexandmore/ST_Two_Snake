@@ -95,15 +95,12 @@ int8_t direction = 1;
 // Used to keep track of how long it's been
 // since the last frame (to keep consistent 
 // framerate).
-unsigned long timeLastUpdate;
+// unsigned long timeLastUpdate;
 #define UPDATE_RATE 150
 // If press button between updates, cache that.
 uint8_t bufferedNextState, bufferedNextSubstate;
-// Snake overrides the normal method of button input
-// (normally it busy-waits for button to be released);
-// to prevent a held button from being registered as
-// many inputs, use these.
-uint8_t waitClearNextState, waitClearNextSubstate;
+// Keep track of last update to keep consistent rate of snake updates
+unsigned long timeLastUpdate;
 
 // Place pellet somewhere the snake isn't
 void placePellet() {
@@ -139,8 +136,6 @@ void clearGame() {
 
   bufferedNextState = 0;
   bufferedNextSubstate = 0;
-  waitClearNextState = 0;
-  waitClearNextSubstate = 0;
   
   clearmatrix();
 }
@@ -166,17 +161,18 @@ void doSnake()
   {  
     case 0:
       SUBSTATE = 1;
-      displayString("Snke");
+      displayString("Snake");
       delay(250);
       clearGame();
       break;
+
     case 1:
-      // Software debounce
-      delay(30);      
-      // When press/hold both, quit. This necessitated
+      // When press both, quit. This necessitated
       // a modification to ST2_Main
       if(NextStateRequest && NextSUBStateRequest) {
         SUBSTATE = 99;
+        NextStateRequest = false;
+        NextSUBStateRequest = false;
         break;
       }
 
@@ -184,19 +180,10 @@ void doSnake()
       // buffer button inputs
       bufferedNextState |= NextStateRequest;
       bufferedNextSubstate |= NextSUBStateRequest;
-      if (NextStateRequest == 0 && waitClearNextState == 1) {
-        waitClearNextState = 0;
-        bufferedNextState = 0;
-      }
-      if (NextSUBStateRequest == 0 && waitClearNextSubstate == 1) {
-        waitClearNextSubstate = 0;
-        bufferedNextSubstate = 0;
-      }
       // Since we're handling buttons, set these to false
       NextStateRequest = false;
       NextSUBStateRequest = false;
 
-      
       if (millis() - timeLastUpdate < UPDATE_RATE) {
         // If not time to update the game yet,
         // and break
@@ -208,15 +195,11 @@ void doSnake()
         timeLastUpdate = timeLastUpdate + UPDATE_RATE;
       }
 
-      // These are only true when first pressed, not when held
-      int nextStatePressed = bufferedNextState & !waitClearNextState;
-      int nextSubstatePressed = bufferedNextSubstate & !waitClearNextSubstate;
-
-      if (nextSubstatePressed) {
+      if (bufferedNextSubstate) {
         direction--;
         direction = direction < 0 ? 3 : direction;
       }
-      if (nextStatePressed) {
+      if (bufferedNextState) {
         direction++;
         direction %= 4;
       }
@@ -251,7 +234,7 @@ void doSnake()
 
       // Check if that puts the snake head on the pellet
       if (snake.atPellet(pellet)) {
-        beepsound(500, 75);
+        beepsound(500, 60);
         // If so, snake grows and re-put pellet
         placePellet();
       } else {
@@ -260,22 +243,16 @@ void doSnake()
       }
 
       drawSnake();
-
-      // Reset buffered input
-      if (bufferedNextState) {
-        waitClearNextState = 1;
-      }
-      if (bufferedNextSubstate) {
-        waitClearNextSubstate = 1;
-      }
+      
+      // Reset buffered inputs
       bufferedNextState = 0;
       bufferedNextSubstate = 0;
       
       break;
     
     case 99: // Exit Snake
-      NextState();
       clearGame();
+      NextState();
       break;
   }
 }
