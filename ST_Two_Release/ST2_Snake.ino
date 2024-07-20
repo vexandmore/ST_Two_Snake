@@ -82,14 +82,12 @@ void moveSnake() {
     if (score > old_score) {
       displayString("New ");
       delay(600);
-      displayString("hi  ");
-      delay(600);
-      displayString("scor");
+      displayString("high");
       delay(600);
       EEPROM.put(2, score);
     }
     
-    displayString("Scor");
+    displayString("scor");
     delay(600);
     displayString(scoreBuf);
     delay(600);
@@ -201,9 +199,9 @@ void doSnake()
       displayString("Snke");
       delay(600);
       clearGame();
-      displayString("To  ");
+      displayString("High");
       delay(600);
-      displayString("beat");
+      displayString("scor");
       delay(600);
       displayString(scoreBuf);
       delay(600);
