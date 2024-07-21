@@ -2,6 +2,7 @@
 // 								                           Snake Game
 //*******************************************************************************************************************
 #include "SnakeBuffer.h"
+#include "CircularQueue.h"
 #include <EEPROM.h>
 
 // Store the whole snake
@@ -10,19 +11,19 @@ CircularSnakeBuffer snake;
 Point pellet;
 // 0, 1, 2, 3 mean North, East, South, West
 int8_t direction;
-// Used to keep track of how long it's been
-// since the last frame (to keep consistent 
-// framerate).
-// unsigned long timeLastUpdate;
-#define UPDATE_RATE 150
-// If press button between updates, cache that.
-uint8_t bufferedNextState, bufferedNextSubstate;
+// Keep previous state of the buttons, to tell if on rising or falling edge
+uint8_t previousNextState, previousNextSubstate;
 // Keep track of last update to keep consistent rate of snake updates
 unsigned long timeLastUpdate;
+// How many ms between frames
+#define UPDATE_RATE 150
 // Only quit if hold both buttons for long enough
 int8_t heldBothButtonsBefore;
 #define NUMBER_OF_TIMES_HOLD_BOTH 3
-
+// Constants for the queue
+enum Button: uint8_t {NEXTSTATE, NEXTSUBSTATE};
+// Buffer inputs
+CircularQueue<Button, 3> inputBuffer;
 
 // Place pellet somewhere the snake isn't
 void placePellet() {
@@ -121,8 +122,8 @@ void clearGame() {
   pellet.row = random(7);
   pellet.col = random(4, 19);
 
-  bufferedNextState = 0;
-  bufferedNextSubstate = 0;
+  previousNextState = 0;
+  previousNextSubstate = 0;
 
   uint8_t val;
   if (EEPROM.get(0, val) != 'H' || EEPROM.get(1, val) != 'i'){
@@ -184,6 +185,23 @@ bool shouldQuit() {
   return false;
 }
 
+void handleInput() {
+  if (NextStateRequest && !previousNextState) {
+    // Rising edge of right button
+    inputBuffer.enqueue(NEXTSTATE);
+  }
+  if (NextSUBStateRequest && !previousNextSubstate) {
+    // Rising edge of left button
+    inputBuffer.enqueue(NEXTSUBSTATE);
+  }
+  previousNextState = NextStateRequest;
+  previousNextSubstate = NextSUBStateRequest;
+  
+  // Since we're handling buttons, set these to false
+  NextStateRequest = false;
+  NextSUBStateRequest = false;
+}
+
 
 void doSnake()
 {
@@ -214,81 +232,29 @@ void doSnake()
         break;
       }
 
-      // Since this may be called many times before update,
-      // buffer button inputs
-      bufferedNextState |= NextStateRequest;
-      bufferedNextSubstate |= NextSUBStateRequest;
-      // Since we're handling buttons, set these to false
-      NextStateRequest = false;
-      NextSUBStateRequest = false;
+      // Queue button presses
+      handleInput();
 
       // Only update snake if it's time
       if(timeCheck()) {
         break;
       }
       
-      if (bufferedNextSubstate) {
-        direction--;
-        direction = direction < 0 ? 3 : direction;
-      }
-      if (bufferedNextState) {
-        direction++;
-        direction %= 4;
+      // If time to render the snake, remove one action from the queue
+      if (inputBuffer.getLength() > 0) {
+        uint8_t nextPress = inputBuffer.dequeue();
+        if (nextPress == NEXTSUBSTATE) {
+          direction--;
+          direction = direction < 0 ? 3 : direction;
+        }
+        if (nextPress == NEXTSTATE) {
+          direction++;
+          direction %= 4;
+        }
       }
 
       moveSnake();
-
-      // If a button is still pressed, go to state to wait for it to be unpressed
-      if (!digitalRead(SETBUTTON) && bufferedNextSubstate) {
-        SUBSTATE = 2;
-      }
-      if (!digitalRead(MODEBUTTON) && bufferedNextState) {
-        SUBSTATE = 3;
-      }
       
-      // Reset buffered inputs
-      bufferedNextState = 0;
-      bufferedNextSubstate = 0;
-      
-      break;
-
-    case 2:
-      if (shouldQuit()) {
-        break;
-      }
-      // Wait for next substate to be unpressed
-      if (!digitalRead(SETBUTTON) == false) {
-        SUBSTATE = 1;
-        NextStateRequest = false;
-        NextSUBStateRequest = false;
-
-        break;
-      }
-      
-      // Only update snake if it's time
-      if(timeCheck()) {
-        break;
-      }
-      moveSnake();
-      break;
-
-    case 3:
-      if (shouldQuit()) {
-        break;
-      }
-      // Wait for next state to be unpressed
-      if (!digitalRead(MODEBUTTON) == false) {
-        SUBSTATE = 1;
-        NextStateRequest = false;
-        NextSUBStateRequest = false;
-        break;
-      }
-      
-      // Only update snake if it's time
-      if(timeCheck()) {
-        break;
-      }
-      moveSnake();
       break;
 
     case 4:
