@@ -19,7 +19,7 @@ unsigned long timeLastUpdate;
 #define UPDATE_RATE 150
 // Only quit if hold both buttons for long enough
 int8_t heldBothButtonsBefore;
-#define NUMBER_OF_TIMES_HOLD_BOTH 3
+#define NUMBER_OF_TIMES_HOLD_BOTH 4
 // Constants for the queue
 enum Button: uint8_t {NEXTSTATE, NEXTSUBSTATE};
 // Buffer inputs
