@@ -50,6 +50,7 @@ void loop()
       }
    //   SUBSTATE = 99;
 
+      // While snake is running, don't detect a combined button press
       while(bval && STATE != 7)
       {
           bval = !digitalRead(SETBUTTON);
@@ -64,7 +65,7 @@ void loop()
         bval = !digitalRead(MODEBUTTON);
       }
 
-      delay(100);
+      delay(50);
       SleepTimer = millis();
     }
   }
@@ -76,6 +77,7 @@ void loop()
   {
     NextSUBStateRequest = true;
 
+    // While snake is running, don't detect a combined button press
     while(bval && STATE != 7)
     {
       
@@ -92,7 +94,7 @@ void loop()
       
       bval = !digitalRead(SETBUTTON);
     }
-    delay(100);
+    delay(50);
     SleepTimer = millis();
   }
  
